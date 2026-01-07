@@ -567,9 +567,13 @@ void CNetworkActorManager::MoveActor(const SNetworkMoveActorData& c_rkNetMoveAct
 
 void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG lDestPosX, LONG lDestPosY, const TPixelPosition& k_pSyncPos, DWORD dwBlendDuration)
 {
+    TraceError("[AttackActor] START - VictimVID:%d AttackerVID:%d SyncPos:(%.2f,%.2f) BlendDur:%d",
+        dwVID, dwAttacakerVID, k_pSyncPos.x, k_pSyncPos.y, dwBlendDuration);
+
     std::map<DWORD, SNetworkActorData>::iterator f = m_kNetActorDict.find(dwVID);
     if (m_kNetActorDict.end() == f)
     {
+        TraceError("[AttackActor] ERROR - Victim VID:%d not found in actor dict", dwVID);
         return;
     }
 
@@ -580,17 +584,23 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
     {
         const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
 
+        // Get victim's current position BEFORE ServerAttack
+        TPixelPosition currentPos;
+        pkInstFind->NEW_GetPixelPosition(&currentPos);
+        TraceError("[AttackActor] Victim current pos:(%.2f,%.2f) ProcessingClientAttack:%d",
+            currentPos.x, currentPos.y, bProcessingClientAttack);
+
         // ALWAYS call ServerAttack so hits are registered
+        TraceError("[AttackActor] Calling ServerAttack for VictimVID:%d from AttackerVID:%d",
+            dwVID, dwAttacakerVID);
         pkInstFind->ServerAttack(dwAttacakerVID);
 
         // Only apply position sync if we have valid sync position AND character is not too far (desynchronized)
         if (k_pSyncPos.x != 0.0f || k_pSyncPos.y != 0.0f) {
-            // Get victim's current position
-            TPixelPosition currentPos;
-            pkInstFind->NEW_GetPixelPosition(&currentPos);
-
             // Calculate distance between current position and sync position
             float fDistance = CalculateDistance(currentPos, k_pSyncPos);
+
+            TraceError("[AttackActor] Distance check: %.2f pixels (threshold: 500.0)", fDistance);
 
             // Threshold for desynchronization detection (500 pixels)
             // If characters are too far apart, skip knockback/push effects to prevent random teleports
@@ -598,6 +608,7 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
 
             if (fDistance <= DESYNC_THRESHOLD) {
                 // Characters are synchronized - apply knockback/push effects
+                TraceError("[AttackActor] Distance OK - applying position sync");
                 if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15) {
                     pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
                 } else {
@@ -612,7 +623,13 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
                 TraceError("[ATTACK_DESYNC] VictimVID:%d distance to sync pos: %.1f pixels (threshold: %.1f) - skipping knockback/push",
                     dwVID, fDistance, DESYNC_THRESHOLD);
             }
+        } else {
+            TraceError("[AttackActor] SyncPos is (0,0) - skipping position sync");
         }
+    }
+    else
+    {
+        TraceError("[AttackActor] ERROR - Victim instance not found for VID:%d", dwVID);
     }
 }
 
