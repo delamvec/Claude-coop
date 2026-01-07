@@ -2,9 +2,16 @@
 #include "NetworkActorManager.h"
 #include "PythonCharacterManager.h"
 #include "PythonItem.h"
-#include "MapUtil.h"
 
 #include "AbstractPlayer.h"
+
+// Helper function to calculate distance between two pixel positions
+static float CalculateDistance(const TPixelPosition& pos1, const TPixelPosition& pos2)
+{
+    float dx = pos1.x - pos2.x;
+    float dy = pos1.y - pos2.y;
+    return sqrtf(dx * dx + dy * dy);
+}
 
 void SNetworkActorData::UpdatePosition()
 {
@@ -583,7 +590,7 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
             pkInstFind->NEW_GetPixelPosition(&currentPos);
 
             // Calculate distance between current position and sync position
-            float fDistance = GetPixelPositionDistance(currentPos, k_pSyncPos);
+            float fDistance = CalculateDistance(currentPos, k_pSyncPos);
 
             // Threshold for desynchronization detection (500 pixels)
             // If characters are too far apart, skip knockback/push effects to prevent random teleports
