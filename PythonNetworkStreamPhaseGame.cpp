@@ -2609,18 +2609,20 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     kPacketAtk.lY =  (long)sBlending.dest.y;
     kPacketAtk.lSX = (long)sBlending.source.x;
     kPacketAtk.lSY = (long)sBlending.source.y;
-    kPacketAtk.fSyncDestX = sBlending.dest.x;
-    // sources and dest are normalized with both coordinates positive
-    // since fSync are ment to be broadcasted to other clients, the Y has to preserve the negative coord
-    kPacketAtk.fSyncDestY = -sBlending.dest.y;
-    kPacketAtk.dwBlendDuration = (unsigned int) (sBlending.duration *1000);
-    kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
-    kPacketAtk.dwTime = ELTimer_GetServerMSec();
 
+    // Convert local to global positions BEFORE setting fSync values
     if (kPacketAtk.lX && kPacketAtk.lY)
         __LocalPositionToGlobalPosition(kPacketAtk.lX, kPacketAtk.lY);
 
     __LocalPositionToGlobalPosition(kPacketAtk.lSX, kPacketAtk.lSY);
+
+    // fSync values should be GLOBAL coordinates (after conversion), not local!
+    // Server uses these for distance validation
+    kPacketAtk.fSyncDestX = (float)kPacketAtk.lX;
+    kPacketAtk.fSyncDestY = (float)kPacketAtk.lY;
+    kPacketAtk.dwBlendDuration = (unsigned int) (sBlending.duration *1000);
+    kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
+    kPacketAtk.dwTime = ELTimer_GetServerMSec();
 
     // Log detailed attack packet info being SENT to server (CG)
     TraceError("[CG_ATTACK_SEND] Type:%d VictimVID:%d Packet:%d SrcPos:(%d,%d) DstPos:(%d,%d) SyncDest:(%.2f,%.2f) BlendDur:%dms Combo:%d Time:%d",
