@@ -2598,23 +2598,36 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     TraceError("TIME: %.4f(%.4f) ATTACK_PACKET: %d TARGET: %d", curTime/1000.0f, (curTime-prevTime)/1000.0f, uMotAttack, dwVIDVictim);
     prevTime = curTime;
 #endif
-   
+
     TPacketCGAttack kPacketAtk;
 
     kPacketAtk.bHeader = HEADER_CG_ATTACK;
     kPacketAtk.bType = uMotAttack;
     kPacketAtk.dwVID = dwVIDVictim;
     kPacketAtk.bPacket = bPacket;
-    kPacketAtk.lX =  (long)sBlending.dest.x;
-    kPacketAtk.lY =  (long)sBlending.dest.y;
     kPacketAtk.lSX = (long)sBlending.source.x;
     kPacketAtk.lSY = (long)sBlending.source.y;
 
-    // Convert local to global positions BEFORE setting fSync values
-    if (kPacketAtk.lX && kPacketAtk.lY)
-        __LocalPositionToGlobalPosition(kPacketAtk.lX, kPacketAtk.lY);
+    // For melee attacks without push effect, sBlending.dest is (0,0)
+    // In this case, use current player position for fSync validation
+    if (sBlending.dest.x == 0.0f && sBlending.dest.y == 0.0f)
+    {
+        // Get current player position (local coords)
+        TPixelPosition kPPixelPos;
+        pkInstMain->NEW_GetPixelPosition(&kPPixelPos);
 
+        kPacketAtk.lX = (long)kPPixelPos.x;
+        kPacketAtk.lY = (long)kPPixelPos.y;
+    }
+    else
+    {
+        kPacketAtk.lX = (long)sBlending.dest.x;
+        kPacketAtk.lY = (long)sBlending.dest.y;
+    }
+
+    // Convert local to global positions BEFORE setting fSync values
     __LocalPositionToGlobalPosition(kPacketAtk.lSX, kPacketAtk.lSY);
+    __LocalPositionToGlobalPosition(kPacketAtk.lX, kPacketAtk.lY);
 
     // fSync values should be GLOBAL coordinates (after conversion), not local!
     // Server uses these for distance validation
