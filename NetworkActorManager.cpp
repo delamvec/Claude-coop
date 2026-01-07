@@ -567,13 +567,14 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
 
     SNetworkActorData& rkNetActorData = f->second;
 
-    if (k_pSyncPos.x && k_pSyncPos.y) {
-        CInstanceBase* pkInstFind = __FindActor(rkNetActorData);
-        if (pkInstFind)
-        {
-            const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
-            pkInstFind->ServerAttack(dwAttacakerVID);
-           
+    CInstanceBase* pkInstFind = __FindActor(rkNetActorData);
+    if (pkInstFind)
+    {
+        const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
+        pkInstFind->ServerAttack(dwAttacakerVID);
+
+        // Only apply position sync if we have valid sync position
+        if (k_pSyncPos.x != 0.0f || k_pSyncPos.y != 0.0f) {
             // if already blending, update
             if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15) {
                 pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
@@ -581,12 +582,12 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
                 // otherwise sync
                 //pkInstFind->SCRIPT_SetPixelPosition(k_pSyncPos.x, k_pSyncPos.y);
                 long lPosX = long(k_pSyncPos.x);
-				long lPosY = long(k_pSyncPos.y);
-				pkInstFind->NEW_SyncPixelPosition(lPosX, lPosY);
+                long lPosY = long(k_pSyncPos.y);
+                pkInstFind->NEW_SyncPixelPosition(lPosX, lPosY);
             }
-        }
 
-        rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+            rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+        }
     }
 }
 
