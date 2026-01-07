@@ -2616,8 +2616,13 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
         TPixelPosition kPPixelPos;
         pkInstMain->NEW_GetPixelPosition(&kPPixelPos);
 
+        TraceError("[ATTACK_MELEE_FIX] sBlending.dest is (0,0), using player position: (%.2f,%.2f)",
+            kPPixelPos.x, kPPixelPos.y);
+
         kPacketAtk.lX = (long)kPPixelPos.x;
         kPacketAtk.lY = (long)kPPixelPos.y;
+
+        TraceError("[ATTACK_MELEE_FIX] Set lX,lY to: (%d,%d)", kPacketAtk.lX, kPacketAtk.lY);
     }
     else
     {
@@ -2628,6 +2633,8 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     // Convert local to global positions BEFORE setting fSync values
     __LocalPositionToGlobalPosition(kPacketAtk.lSX, kPacketAtk.lSY);
     __LocalPositionToGlobalPosition(kPacketAtk.lX, kPacketAtk.lY);
+
+    TraceError("[ATTACK_AFTER_CONVERT] lX,lY after conversion: (%d,%d)", kPacketAtk.lX, kPacketAtk.lY);
 
     // fSync values should be GLOBAL coordinates (after conversion), not local!
     // Server uses these for distance validation
