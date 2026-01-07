@@ -1674,7 +1674,7 @@ bool CPythonNetworkStream::RecvCharacterAttackPacket()
 
     TPixelPosition tSyncPosition{
         kPacket.fSyncDestX,
-        kPacket.fSyncDestY,
+        -kPacket.fSyncDestY,  // ← Fix: Neguje Y zpět (bylo odesláno jako -Y na řádku 2615)
         0
     };
 
