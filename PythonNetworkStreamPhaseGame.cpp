@@ -1672,9 +1672,15 @@ bool CPythonNetworkStream::RecvCharacterAttackPacket()
 
     __GlobalPositionToLocalPosition(kPacket.lSX, kPacket.lSY);
 
+    // Convert fSyncDest from global to local coordinates for distance validation
+    LONG lSyncX = (LONG)kPacket.fSyncDestX;
+    LONG lSyncY = (LONG)kPacket.fSyncDestY;
+    if (lSyncX != 0 || lSyncY != 0)
+        __GlobalPositionToLocalPosition(lSyncX, lSyncY);
+
     TPixelPosition tSyncPosition{
-        kPacket.fSyncDestX,
-        kPacket.fSyncDestY,
+        (float)lSyncX,
+        (float)lSyncY,
         0
     };
 
