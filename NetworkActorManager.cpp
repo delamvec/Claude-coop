@@ -2,6 +2,7 @@
 #include "NetworkActorManager.h"
 #include "PythonCharacterManager.h"
 #include "PythonItem.h"
+#include "MapUtil.h"
 
 #include "AbstractPlayer.h"
 
@@ -571,22 +572,39 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
     if (pkInstFind)
     {
         const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
+
+        // ALWAYS call ServerAttack so hits are registered
         pkInstFind->ServerAttack(dwAttacakerVID);
 
-        // Only apply position sync if we have valid sync position
+        // Only apply position sync if we have valid sync position AND character is not too far (desynchronized)
         if (k_pSyncPos.x != 0.0f || k_pSyncPos.y != 0.0f) {
-            // if already blending, update
-            if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15) {
-                pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
-            } else {
-                // otherwise sync
-                //pkInstFind->SCRIPT_SetPixelPosition(k_pSyncPos.x, k_pSyncPos.y);
-                long lPosX = long(k_pSyncPos.x);
-                long lPosY = long(k_pSyncPos.y);
-                pkInstFind->NEW_SyncPixelPosition(lPosX, lPosY);
-            }
+            // Get victim's current position
+            TPixelPosition currentPos;
+            pkInstFind->NEW_GetPixelPosition(&currentPos);
 
-            rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+            // Calculate distance between current position and sync position
+            float fDistance = GetPixelPositionDistance(currentPos, k_pSyncPos);
+
+            // Threshold for desynchronization detection (500 pixels)
+            // If characters are too far apart, skip knockback/push effects to prevent random teleports
+            const float DESYNC_THRESHOLD = 500.0f;
+
+            if (fDistance <= DESYNC_THRESHOLD) {
+                // Characters are synchronized - apply knockback/push effects
+                if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15) {
+                    pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
+                } else {
+                    // otherwise sync
+                    long lPosX = long(k_pSyncPos.x);
+                    long lPosY = long(k_pSyncPos.y);
+                    pkInstFind->NEW_SyncPixelPosition(lPosX, lPosY);
+                }
+                rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+            } else {
+                // Characters are desynchronized - skip position sync but attack still registers
+                TraceError("[ATTACK_DESYNC] VictimVID:%d distance to sync pos: %.1f pixels (threshold: %.1f) - skipping knockback/push",
+                    dwVID, fDistance, DESYNC_THRESHOLD);
+            }
         }
     }
 }
