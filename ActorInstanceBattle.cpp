@@ -116,6 +116,20 @@ bool CActorInstance::CanFishing()
 
 BOOL CActorInstance::IsClickableDistanceDestInstance(CActorInstance & rkInstDst, float fDistance)
 {
+	// Add validation for distance parameter
+	if (fDistance < 0.0f)
+	{
+		TraceError("CActorInstance::IsClickableDistanceDestInstance - Invalid distance value: %f (negative)", fDistance);
+		return FALSE;
+	}
+
+	// Add validation for extreme distance values
+	if (!isfinite(fDistance))
+	{
+		TraceError("CActorInstance::IsClickableDistanceDestInstance - Invalid distance value: %f (not finite)", fDistance);
+		return FALSE;
+	}
+
 	TPixelPosition kPPosSrc;
 	GetPixelPosition(&kPPosSrc);
 
@@ -150,12 +164,26 @@ void CActorInstance::InputNormalAttackCommand(float fDirRot)
 	if (!__CanInputNormalAttackCommand())
 		return;
 
+	// Add validation for rotation parameter
+	if (!isfinite(fDirRot))
+	{
+		TraceError("CActorInstance::InputNormalAttackCommand - Invalid rotation value: %f (not finite)", fDirRot);
+		return;
+	}
+
 	m_fAtkDirRot=fDirRot;
 	NormalAttack(m_fAtkDirRot);
 }
 
 bool CActorInstance::InputComboAttackCommand(float fDirRot)
 {
+	// Add validation for rotation parameter
+	if (!isfinite(fDirRot))
+	{
+		TraceError("CActorInstance::InputComboAttackCommand - Invalid rotation value: %f (not finite)", fDirRot);
+		return false;
+	}
+
 	m_fAtkDirRot=fDirRot;
 
 	if (m_isPreInput)
@@ -220,7 +248,7 @@ void CActorInstance::ComboProcess()
 	{
 		if (!m_pkCurRaceMotionData)
 		{
-			Tracef("Attacking motion data is NULL! : %d\n", m_dwcurComboIndex);
+			TraceError("CActorInstance::ComboProcess - Attacking motion data is NULL for combo index: %d", m_dwcurComboIndex);
 			__ClearCombo();
 			return;
 		}

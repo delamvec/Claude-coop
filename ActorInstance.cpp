@@ -149,6 +149,18 @@ void CActorInstance::SetResistFallen(bool isResistFallen)
 
 void CActorInstance::SetReachScale(float fScale)
 {
+	// Add validation for reach scale parameter
+	if (fScale < 0.0f)
+	{
+		TraceError("CActorInstance::SetReachScale - Invalid reach scale: %f (negative), using 0.0f", fScale);
+		fScale = 0.0f;
+	}
+	if (!isfinite(fScale))
+	{
+		TraceError("CActorInstance::SetReachScale - Invalid reach scale: %f (not finite), using 1.0f", fScale);
+		fScale = 1.0f;
+	}
+
 	m_fReachScale=fScale;
 }
 
@@ -181,11 +193,35 @@ void CActorInstance::SetComboType(WORD wComboType)
 
 void CActorInstance::SetAttackSpeed(float fAtkSpd)
 {
+	// Add validation for attack speed parameter
+	if (fAtkSpd < 0.0f)
+	{
+		TraceError("CActorInstance::SetAttackSpeed - Invalid attack speed: %f (negative), using 0.0f", fAtkSpd);
+		fAtkSpd = 0.0f;
+	}
+	if (!isfinite(fAtkSpd))
+	{
+		TraceError("CActorInstance::SetAttackSpeed - Invalid attack speed: %f (not finite), using 1.0f", fAtkSpd);
+		fAtkSpd = 1.0f;
+	}
+
 	m_fAtkSpd=fAtkSpd;
 }
 
 void CActorInstance::SetMoveSpeed(float fMovSpd)
 {
+	// Add validation for move speed parameter
+	if (fMovSpd < 0.0f)
+	{
+		TraceError("CActorInstance::SetMoveSpeed - Invalid move speed: %f (negative), using 0.0f", fMovSpd);
+		fMovSpd = 0.0f;
+	}
+	if (!isfinite(fMovSpd))
+	{
+		TraceError("CActorInstance::SetMoveSpeed - Invalid move speed: %f (not finite), using 1.0f", fMovSpd);
+		fMovSpd = 1.0f;
+	}
+
 	if (m_fMovSpd==fMovSpd)
 		return;
 

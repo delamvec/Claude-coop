@@ -102,7 +102,12 @@ void CPythonPlayerEventHandler::OnWarp(const SState& c_rkState)
 void CPythonPlayerEventHandler::OnAttack(const SState& c_rkState, WORD wMotionIndex)
 {
 //	Tracef("CPythonPlayerEventHandler::OnAttack [%d]\n", wMotionIndex);
-	assert(wMotionIndex < 255);
+	// Add validation for motion index with clear error message
+	if (wMotionIndex >= 255)
+	{
+		TraceError("CPythonPlayerEventHandler::OnAttack - Invalid motion index: %d (must be < 255)", wMotionIndex);
+		return;
+	}
 
 	CPythonNetworkStream& rkNetStream=CPythonNetworkStream::Instance();
 	rkNetStream.SendCharacterStatePacket(c_rkState.kPPosSelf, c_rkState.fAdvRotSelf, CInstanceBase::FUNC_COMBO, wMotionIndex);
@@ -209,9 +214,15 @@ void CPythonPlayerEventHandler::FlushVictimList()
 	if (m_kVctkVictim.empty())
 		return;
 
-	// #0000682: [M2EU] ������ ��ų ���� ƨ�� 
+	// #0000682: [M2EU] ������ ��ų ���� ƨ��
 	unsigned int SYNC_POSITION_COUNT_LIMIT = 16;
 	unsigned int uiVictimCount = m_kVctkVictim.size();
+
+	// Add validation for victim count
+	if (uiVictimCount > 1000)
+	{
+		TraceError("CPythonPlayerEventHandler::FlushVictimList - Abnormally large victim count: %d (potential issue)", uiVictimCount);
+	}
 
 	CPythonNetworkStream& rkStream=CPythonNetworkStream::Instance();
 
@@ -244,6 +255,30 @@ CPythonPlayerEventHandler::CPythonPlayerEventHandler()
 
 void CPythonPlayerEventHandler::CNormalBowAttack_FlyEventHandler_AutoClear::OnSetFlyTarget()
 {
+	// Add validation for instance pointers
+	if (!m_pInstMain)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::OnSetFlyTarget - Main instance pointer is null");
+		return;
+	}
+	if (!m_pInstTarget)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::OnSetFlyTarget - Target instance pointer is null");
+		return;
+	}
+
+	// Add validation for graphic thing instance
+	if (!m_pInstMain->GetGraphicThingInstancePtr())
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::OnSetFlyTarget - Main graphic thing instance is null");
+		return;
+	}
+	if (!m_pInstTarget->GetGraphicThingInstancePtr())
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::OnSetFlyTarget - Target graphic thing instance is null");
+		return;
+	}
+
 	SState s;
 	m_pInstMain->NEW_GetPixelPosition(&s.kPPosSelf);
 	s.fAdvRotSelf=m_pInstMain->GetGraphicThingInstancePtr()->GetTargetRotation();
@@ -259,6 +294,20 @@ void CPythonPlayerEventHandler::CNormalBowAttack_FlyEventHandler_AutoClear::OnSh
 
 void CPythonPlayerEventHandler::CNormalBowAttack_FlyEventHandler_AutoClear::Set(CPythonPlayerEventHandler * pParent, CInstanceBase * pInstMain, CInstanceBase * pInstTarget)
 {
+	// Add validation for pointers
+	if (!pParent)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::Set - Null parent pointer provided");
+	}
+	if (!pInstMain)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::Set - Null main instance pointer provided");
+	}
+	if (!pInstTarget)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::Set - Null target instance pointer provided");
+	}
+
 	m_pParent=(pParent);
 	m_pInstMain=(pInstMain);
 	m_pInstTarget=(pInstTarget);
@@ -266,6 +315,12 @@ void CPythonPlayerEventHandler::CNormalBowAttack_FlyEventHandler_AutoClear::Set(
 
 void CPythonPlayerEventHandler::CNormalBowAttack_FlyEventHandler_AutoClear::SetTarget(CInstanceBase* pInstTarget)
 {
+	// Add validation for target pointer
+	if (!pInstTarget)
+	{
+		TraceError("CNormalBowAttack_FlyEventHandler_AutoClear::SetTarget - Null target instance pointer provided");
+	}
+
 	m_pInstTarget = pInstTarget;
 }
 

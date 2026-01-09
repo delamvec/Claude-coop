@@ -249,6 +249,14 @@ void CInstanceBase::__AttachHorseSaddle()
 {
 	if (!IsMountingHorse())
 		return;
+
+	// Add validation for horse actor pointer
+	if (!m_kHorse.m_pkActor)
+	{
+		TraceError("CInstanceBase::__AttachHorseSaddle - Horse actor pointer is null");
+		return;
+	}
+
 	m_kHorse.m_pkActor->AttachModelInstance(CRaceData::PART_MAIN, "saddle", m_GraphicThingInstance, CRaceData::PART_MAIN);
 }
 
@@ -256,6 +264,14 @@ void CInstanceBase::__DetachHorseSaddle()
 {
 	if (!IsMountingHorse())
 		return;
+
+	// Add validation for horse actor pointer
+	if (!m_kHorse.m_pkActor)
+	{
+		TraceError("CInstanceBase::__DetachHorseSaddle - Horse actor pointer is null");
+		return;
+	}
+
 	m_kHorse.m_pkActor->DetachModelInstance(CRaceData::PART_MAIN, m_GraphicThingInstance, CRaceData::PART_MAIN);
 }
 
@@ -280,6 +296,13 @@ bool CInstanceBase::AvoidObject(const CGraphicObjectInstance& c_rkBGObj)
 
 bool __ArmorVnumToShape(int iVnum, DWORD * pdwShape)
 {
+	// Add validation for output pointer
+	if (!pdwShape)
+	{
+		TraceError("__ArmorVnumToShape - Null shape pointer provided");
+		return false;
+	}
+
 	*pdwShape = iVnum;
 
 	/////////////////////////////////////////
@@ -321,6 +344,13 @@ static CActorInstanceBackground gs_kActorInstBG;
 
 bool CInstanceBase::LessRenderOrder(CInstanceBase* pkInst)
 {
+	// Add validation for instance pointer
+	if (!pkInst)
+	{
+		TraceError("CInstanceBase::LessRenderOrder - Null instance pointer provided");
+		return false;
+	}
+
 	int nMainAlpha=(__GetAlphaValue() < 1.0f) ? 1 : 0;
 	int nTestAlpha=(pkInst->__GetAlphaValue() < 1.0f) ? 1 : 0;
 	if (nMainAlpha < nTestAlpha)
@@ -363,6 +393,13 @@ UINT CInstanceBase::__LessRenderOrder_GetLODLevel()
 
 bool CInstanceBase::__Background_GetWaterHeight(const TPixelPosition& c_rkPPos, float* pfHeight)
 {
+	// Add validation for output pointer
+	if (!pfHeight)
+	{
+		TraceError("CInstanceBase::__Background_GetWaterHeight - Null height pointer provided");
+		return false;
+	}
+
 	long lHeight;
 	if (!CPythonBackground::Instance().GetWaterHeight(int(c_rkPPos.x), int(c_rkPPos.y), &lHeight))
 		return false;
