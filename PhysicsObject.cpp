@@ -76,6 +76,12 @@ void CPhysicsObject::IncreaseExternalForce(const D3DXVECTOR3 & c_rvBasePosition,
 		return;
 	}
 
+	TraceError("[PHYSICS_FORCE_START] BasePos:(%.2f,%.2f,%.2f) Force:%.2f Direction:(%.2f,%.2f,%.2f) Mass:%.2f",
+		c_rvBasePosition.x, c_rvBasePosition.y, c_rvBasePosition.z,
+		fForce,
+		m_v3Direction.x, m_v3Direction.y, m_v3Direction.z,
+		m_fMass);
+
 	// Add validation for mass to prevent division by zero - but continue with safe defaults
 	if (fabs(m_fMass) < EPSILON)
 	{
@@ -90,6 +96,10 @@ void CPhysicsObject::IncreaseExternalForce(const D3DXVECTOR3 & c_rvBasePosition,
 		m_v3Acceleration = m_v3Direction * (fForce / m_fMass);
 		m_v3Velocity = m_v3Acceleration;
 	}
+
+	TraceError("[PHYSICS_FORCE_APPLIED] Acceleration:(%.2f,%.2f,%.2f) Velocity:(%.2f,%.2f,%.2f)",
+		m_v3Acceleration.x, m_v3Acceleration.y, m_v3Acceleration.z,
+		m_v3Velocity.x, m_v3Velocity.y, m_v3Velocity.z);
 /*
 	Tracenf("force %f, mass %f, accel (%f, %f, %f)", fForce, m_fMass, 
 		m_v3Acceleration.x, 
@@ -181,6 +191,13 @@ void CPhysicsObject::SetLastPosition(const TPixelPosition& c_rPosition, const TP
     m_v3DeltaPosition.z = float(c_rDeltaPosition.z);
     m_xPushingPosition.Setup(0.0f, c_rDeltaPosition.x, fBlendingTime);
     m_yPushingPosition.Setup(0.0f, c_rDeltaPosition.y, fBlendingTime);
+
+    // LOG: Physics blending position update
+    TraceError("[PHYSICS_SET_BLEND] Current:(%.2f,%.2f,%.2f) Delta:(%.2f,%.2f,%.2f) Final:(%.2f,%.2f,%.2f) Time:%.3fs",
+        c_rPosition.x, c_rPosition.y, c_rPosition.z,
+        c_rDeltaPosition.x, c_rDeltaPosition.y, c_rDeltaPosition.z,
+        m_v3FinalPosition.x, m_v3FinalPosition.y, m_v3FinalPosition.z,
+        fBlendingTime);
 }
 void CPhysicsObject::GetFinalPosition(TPixelPosition* pPosition) const
 {
@@ -194,6 +211,10 @@ void CPhysicsObject::GetFinalPosition(TPixelPosition* pPosition) const
 	pPosition->x = (m_v3FinalPosition.x);
 	pPosition->y = (m_v3FinalPosition.y);
 	pPosition->z = (m_v3FinalPosition.z);
+
+	// LOG: Physics final position retrieved
+	TraceError("[PHYSICS_GET_FINAL] Position:(%.2f,%.2f,%.2f) isBlending:%d",
+		pPosition->x, pPosition->y, pPosition->z, isBlending() ? 1 : 0);
 }
 
 void CPhysicsObject::GetDeltaPosition(TPixelPosition* pPosition) const

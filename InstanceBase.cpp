@@ -1995,6 +1995,15 @@ void CInstanceBase::RenderTrace()
 
 void CInstanceBase::SetBlendingPosition(const TPixelPosition & c_rPixelPosition, float fBlendingTime)
 {
+    TPixelPosition kCurrentPos;
+    NEW_GetPixelPosition(&kCurrentPos);
+
+    TraceError("[INST_SET_BLEND] VID:%d Current:(%.2f,%.2f,%.2f) Target:(%.2f,%.2f,%.2f) Time:%.3fs",
+        GetVirtualID(),
+        kCurrentPos.x, kCurrentPos.y, kCurrentPos.z,
+        c_rPixelPosition.x, c_rPixelPosition.y, c_rPixelPosition.z,
+        fBlendingTime);
+
     m_GraphicThingInstance.SetBlendingPosition(c_rPixelPosition, fBlendingTime);
 }
 

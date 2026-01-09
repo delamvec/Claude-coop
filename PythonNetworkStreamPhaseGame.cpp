@@ -1655,8 +1655,8 @@ bool CPythonNetworkStream::RecvCharacterAttackPacket()
         return false;
     }
 
-    // Log detailed attack packet info RECEIVED from server (GC)
-    TraceError("[GC_ATTACK_RECV] Type:%d AttackerVID:%d VictimVID:%d Packet:%d SrcPos:(%d,%d) DstPos:(%d,%d) SyncDest:(%.2f,%.2f) BlendDur:%dms",
+    // Log detailed attack packet info RECEIVED from server (GC) - BEFORE conversion
+    TraceError("[GC_ATTACK_RECV_RAW] Type:%d AttackerVID:%d VictimVID:%d Packet:%d SrcPos:(%d,%d) DstPos:(%d,%d) SyncDest:(%.2f,%.2f) BlendDur:%dms",
         kPacket.bType,
         kPacket.dwAttacakerVID,
         kPacket.dwVID,
@@ -1671,6 +1671,14 @@ bool CPythonNetworkStream::RecvCharacterAttackPacket()
         __GlobalPositionToLocalPosition(kPacket.lX, kPacket.lY);
 
     __GlobalPositionToLocalPosition(kPacket.lSX, kPacket.lSY);
+
+    // Log after conversion
+    TraceError("[GC_ATTACK_RECV_CONVERTED] Type:%d AttackerVID:%d VictimVID:%d SrcPos:(%d,%d) DstPos:(%d,%d)",
+        kPacket.bType,
+        kPacket.dwAttacakerVID,
+        kPacket.dwVID,
+        kPacket.lSX, kPacket.lSY,
+        kPacket.lX, kPacket.lY);
 
     TPixelPosition tSyncPosition{
         kPacket.fSyncDestX,
@@ -2592,13 +2600,25 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     CPythonCharacterManager& rkChrMgr = CPythonCharacterManager::Instance();
     CInstanceBase* pkInstMain = rkChrMgr.GetMainInstancePtr();
 
+    // LOG: Get player current position
+    TPixelPosition kPlayerPos;
+    pkInstMain->NEW_GetPixelPosition(&kPlayerPos);
+    TraceError("[ATTACK_PACKET_START] Type:%d VictimVID:%d PlayerPos:(%.2f,%.2f,%.2f)",
+        uMotAttack, dwVIDVictim, kPlayerPos.x, kPlayerPos.y, kPlayerPos.z);
+
+    // LOG: Input blending data
+    TraceError("[ATTACK_BLENDING_INPUT] Source:(%.2f,%.2f,%.2f) Dest:(%.2f,%.2f,%.2f) Duration:%.3fs",
+        sBlending.source.x, sBlending.source.y, sBlending.source.z,
+        sBlending.dest.x, sBlending.dest.y, sBlending.dest.z,
+        sBlending.duration);
+
 #ifdef ATTACK_TIME_LOG
     static DWORD prevTime = timeGetTime();
     DWORD curTime = timeGetTime();
     TraceError("TIME: %.4f(%.4f) ATTACK_PACKET: %d TARGET: %d", curTime/1000.0f, (curTime-prevTime)/1000.0f, uMotAttack, dwVIDVictim);
     prevTime = curTime;
 #endif
-   
+
     TPacketCGAttack kPacketAtk;
 
     kPacketAtk.bHeader = HEADER_CG_ATTACK;
@@ -2617,10 +2637,18 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
     kPacketAtk.dwTime = ELTimer_GetServerMSec();
 
+    // LOG: Coordinates BEFORE conversion
+    TraceError("[ATTACK_COORDS_BEFORE_CONVERT] Src:(%d,%d) Dst:(%d,%d)",
+        kPacketAtk.lSX, kPacketAtk.lSY, kPacketAtk.lX, kPacketAtk.lY);
+
     if (kPacketAtk.lX && kPacketAtk.lY)
         __LocalPositionToGlobalPosition(kPacketAtk.lX, kPacketAtk.lY);
 
     __LocalPositionToGlobalPosition(kPacketAtk.lSX, kPacketAtk.lSY);
+
+    // LOG: Coordinates AFTER conversion
+    TraceError("[ATTACK_COORDS_AFTER_CONVERT] Src:(%d,%d) Dst:(%d,%d)",
+        kPacketAtk.lSX, kPacketAtk.lSY, kPacketAtk.lX, kPacketAtk.lY);
 
     // Log detailed attack packet info being SENT to server (CG)
     TraceError("[CG_ATTACK_SEND] Type:%d VictimVID:%d Packet:%d SrcPos:(%d,%d) DstPos:(%d,%d) SyncDest:(%.2f,%.2f) BlendDur:%dms Combo:%d Time:%d",

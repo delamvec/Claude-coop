@@ -1054,13 +1054,21 @@ CActorInstance::~CActorInstance()
 
 void CActorInstance::GetBlendingPosition(TPixelPosition * pPosition)
 {
+    TPixelPosition kCurrentPos;
+    GetPixelPosition(&kCurrentPos);
+
     if (m_PhysicsObject.isBlending())
     {
         m_PhysicsObject.GetFinalPosition(pPosition);
+        TraceError("[ACTOR_GET_BLEND] VID:%d Current:(%.2f,%.2f,%.2f) Final:(%.2f,%.2f,%.2f) [BLENDING]",
+            GetVirtualID(), kCurrentPos.x, kCurrentPos.y, kCurrentPos.z,
+            pPosition->x, pPosition->y, pPosition->z);
     }
     else
     {
         GetPixelPosition(pPosition);
+        TraceError("[ACTOR_GET_BLEND] VID:%d Position:(%.2f,%.2f,%.2f) [NOT_BLENDING]",
+            GetVirtualID(), pPosition->x, pPosition->y, pPosition->z);
     }
 }
 
@@ -1072,13 +1080,19 @@ bool CActorInstance::IsPositionBlending() const
 void CActorInstance::__Push(const TPixelPosition& c_rkPPosDst, unsigned int unDuration)
 {
     DWORD dwVID = GetVirtualID();
-    Tracenf("VID %d SyncPixelPosition %f %f", dwVID, c_rkPPosDst.x, c_rkPPosDst.y);
 
     if (unDuration == 0)
         unDuration = 1000;
 
     const D3DXVECTOR3& c_rv3Src = GetPosition();
     const D3DXVECTOR3 c_v3Delta = c_rkPPosDst - c_rv3Src;
+
+    TraceError("[ACTOR_PUSH] VID:%d Source:(%.2f,%.2f,%.2f) Dest:(%.2f,%.2f,%.2f) Delta:(%.2f,%.2f,%.2f) Duration:%dms",
+        dwVID,
+        c_rv3Src.x, c_rv3Src.y, c_rv3Src.z,
+        c_rkPPosDst.x, c_rkPPosDst.y, c_rkPPosDst.z,
+        c_v3Delta.x, c_v3Delta.y, c_v3Delta.z,
+        unDuration);
 
     SetBlendingPosition(c_rkPPosDst, float(unDuration) / 1000);
 
@@ -1087,6 +1101,7 @@ void CActorInstance::__Push(const TPixelPosition& c_rkPPosDst, unsigned int unDu
         int len = sqrt(c_v3Delta.x * c_v3Delta.x + c_v3Delta.y * c_v3Delta.y);
         if (len > 150.0f)
         {
+            TraceError("[ACTOR_PUSH] VID:%d Applying DAMAGE_FLYING animation (push distance:%.2f)", dwVID, (float)len);
             InterceptOnceMotion(CRaceMotionData::NAME_DAMAGE_FLYING);
             PushOnceMotion(CRaceMotionData::NAME_STAND_UP);
         }
@@ -1188,22 +1203,50 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData & c
     memset(&sBlending, 0, sizeof(sBlending));
     sBlending.source = rVictim.NEW_GetCurPixelPositionRef();
 
+    // LOG: Blending source initialized
+    TraceError("[HIT_BLEND_START] Attacker:%d Victim:%d Source:(%.2f,%.2f,%.2f)",
+        GetVirtualID(), rVictim.GetVirtualID(),
+        sBlending.source.x, sBlending.source.y, sBlending.source.z);
+
     if (__CanPushDestActor(rVictim) && c_rAttackData.fExternalForce > 0.0f)
     {
         const bool bServerAttackAlreadyCame = rVictim.ServerAttackCameFirst(GetVirtualID());
         rVictim.ClientAttack(GetVirtualID());
+        TraceError("[HIT_PUSH_CHECK] Attacker:%d Victim:%d ServerFirst:%d CanPush:YES Force:%.2f",
+            GetVirtualID(), rVictim.GetVirtualID(), bServerAttackAlreadyCame ? 1 : 0,
+            c_rAttackData.fExternalForce);
+
         if (!bServerAttackAlreadyCame)
         {
             __PushCircle(rVictim);
 
             // VICTIM_COLLISION_TEST
             const D3DXVECTOR3& kVictimPos = rVictim.GetPosition();
+            TraceError("[HIT_PUSH_APPLY] Victim:%d VictimPos:(%.2f,%.2f,%.2f) Force:%.2f",
+                rVictim.GetVirtualID(), kVictimPos.x, kVictimPos.y, kVictimPos.z,
+                c_rAttackData.fExternalForce);
 
             rVictim.m_PhysicsObject.IncreaseExternalForce(kVictimPos, c_rAttackData.fExternalForce);
             rVictim.GetBlendingPosition(&(sBlending.dest));
             sBlending.duration = rVictim.m_PhysicsObject.GetRemainingTime();
+
+            // LOG: Blending dest calculated after push
+            TraceError("[HIT_BLEND_DEST] Attacker:%d Victim:%d Dest:(%.2f,%.2f,%.2f) Duration:%.3fs",
+                GetVirtualID(), rVictim.GetVirtualID(),
+                sBlending.dest.x, sBlending.dest.y, sBlending.dest.z, sBlending.duration);
             // VICTIM_COLLISION_TEST_END
         }
+        else
+        {
+            TraceError("[HIT_PUSH_SKIP] Victim:%d - Server attack came first, no push applied",
+                rVictim.GetVirtualID());
+        }
+    }
+    else
+    {
+        TraceError("[HIT_PUSH_CHECK] Attacker:%d Victim:%d CanPush:NO (CanPushDestActor:%d Force:%.2f)",
+            GetVirtualID(), rVictim.GetVirtualID(),
+            __CanPushDestActor(rVictim) ? 1 : 0, c_rAttackData.fExternalForce);
     }
 
 
