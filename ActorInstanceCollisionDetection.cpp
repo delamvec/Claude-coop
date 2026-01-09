@@ -351,48 +351,89 @@ BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 
 BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 {
+	Tracenf("[__NormalAttackProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
+
 	// Check Distance
 	// NOTE - �ϴ� ���� üũ�� �ϰ� ����
 	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_z - m_z, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
 
+	Tracenf("[__NormalAttackProcess] Distance check: %.2f pixels (squared)", fDistance);
+
 	extern bool IS_HUGE_RACE(unsigned int vnum);
 	if (IS_HUGE_RACE(rVictim.GetRace()))
 	{
 		if (fDistance >= 500.0f*500.0f)
+		{
+			Tracenf("[__NormalAttackProcess] Distance too far for huge race: %.2f >= 250000", fDistance);
 			return FALSE;
+		}
 	}
 	else
 	{
 		if (fDistance >= 300.0f*300.0f)
+		{
+			Tracenf("[__NormalAttackProcess] Distance too far for normal race: %.2f >= 90000", fDistance);
 			return FALSE;
+		}
 	}
 
+	Tracenf("[__NormalAttackProcess] Distance OK, checking isValidAttacking()");
 	if (!isValidAttacking())
+	{
+		Tracenf("[__NormalAttackProcess] isValidAttacking() = FALSE");
 		return FALSE;
+	}
+	Tracenf("[__NormalAttackProcess] isValidAttacking() = TRUE, checking motion data");
+
+	if (!m_pkCurRaceMotionData)
+	{
+		Tracenf("[__NormalAttackProcess] m_pkCurRaceMotionData is NULL");
+		return FALSE;
+	}
+	Tracenf("[__NormalAttackProcess] m_pkCurRaceMotionData is valid");
 
 	const float c_fAttackRadius = 20.0f;
 	const NRaceData::TMotionAttackData * pad = m_pkCurRaceMotionData->GetMotionAttackDataPointer();
 
+	if (!pad)
+	{
+		Tracenf("[__NormalAttackProcess] Motion attack data is NULL");
+		return FALSE;
+	}
+	Tracenf("[__NormalAttackProcess] Motion attack data valid, HitDataContainer size: %d", pad->HitDataContainer.size());
+
 	const float motiontime = GetAttackingElapsedTime();
+	Tracenf("[__NormalAttackProcess] Motion time: %.4f", motiontime);
 
 	NRaceData::THitDataContainer::const_iterator itorHitData = pad->HitDataContainer.begin();
-	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData)
+	int iHitDataIndex = 0;
+	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData, ++iHitDataIndex)
 	{
 		const NRaceData::THitData & c_rHitData = *itorHitData;
+
+		Tracenf("[__NormalAttackProcess] Processing HitData #%d", iHitDataIndex);
 
 		// NOTE : �̹� �¾Ҵ��� üũ
 		THitDataMap::iterator itHitData = m_HitDataMap.find(&c_rHitData);
 		if (itHitData != m_HitDataMap.end())
 		{
+			Tracenf("[__NormalAttackProcess] HitData found in map");
 			THittedInstanceMap & rHittedInstanceMap = itHitData->second;
 
 			THittedInstanceMap::iterator itInstance;
 			if ((itInstance=rHittedInstanceMap.find(&rVictim)) != rHittedInstanceMap.end())
 			{
 				if (pad->iMotionType==NRaceData::MOTION_TYPE_COMBO || itInstance->second > GetLocalTime())
+				{
+					Tracenf("[__NormalAttackProcess] Victim already hit, skipping");
 					continue;
+				}
 			}
+		}
+		else
+		{
+			Tracenf("[__NormalAttackProcess] HitData NOT in map (this is first attack with this motion)");
 		}
 
 		NRaceData::THitTimePositionMap::const_iterator range_start, range_end;
@@ -405,6 +446,18 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 			fTimeTolerance = 0.1f;
 		range_start = c_rHitData.mapHitPosition.lower_bound(motiontime - fTimeTolerance);
 		range_end = c_rHitData.mapHitPosition.upper_bound(motiontime);
+
+		int iHitPositionCount = 0;
+		for (NRaceData::THitTimePositionMap::const_iterator it = range_start; it != range_end; ++it)
+			iHitPositionCount++;
+
+		Tracenf("[__NormalAttackProcess] HitPosition time range: [%.4f, %.4f], found %d positions", motiontime - fTimeTolerance, motiontime, iHitPositionCount);
+
+		if (iHitPositionCount == 0)
+		{
+			Tracenf("[__NormalAttackProcess] NO HitPositions found in time range - attack will not register!");
+		}
+
 		float c = cosf(D3DXToRadian(GetRotation()));
 		float s = sinf(D3DXToRadian(GetRotation()));
 
