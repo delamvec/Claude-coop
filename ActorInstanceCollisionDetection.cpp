@@ -266,39 +266,24 @@ bool CActorInstance::CreateCollisionInstancePiece(DWORD dwAttachingModelIndex, c
 
 BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 {
-	Tracenf("[__SplashAttackProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
-
 	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_z - m_z, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
-	Tracenf("[__SplashAttackProcess] Distance check: %.2f pixels (squared)", fDistance);
-
 	if (fDistance >= 1000.0f*1000.0f)
-	{
-		Tracenf("[__SplashAttackProcess] Distance too far: %.2f >= %f", fDistance, 1000.0f*1000.0f);
 		return FALSE;
-	}
 
 	// Check Distance
 	if (!__IsInSplashTime())
-	{
-		Tracenf("[__SplashAttackProcess] NOT in splash time");
 		return FALSE;
-	}
-	Tracenf("[__SplashAttackProcess] In splash time - proceeding");
 
 	const CRaceMotionData::TMotionAttackingEventData * c_pAttackingEvent = m_kSplashArea.c_pAttackingEvent;
 	const NRaceData::TAttackData & c_rAttackData = c_pAttackingEvent->AttackData;
 	THittedInstanceMap & rHittedInstanceMap = m_kSplashArea.HittedInstanceMap;
 
-	Tracenf("[__SplashAttackProcess] AttackType:%d SphereVector size:%d", c_rAttackData.iAttackType, m_kSplashArea.SphereInstanceVector.size());
-
 	// NOTE : �̹� ���ȴٸ� ���� �� ����
 	if (rHittedInstanceMap.end() != rHittedInstanceMap.find(&rVictim))
 	{
-		Tracenf("[__SplashAttackProcess] Victim already hit (in HittedInstanceMap)");
 		return FALSE;
 	}
-	Tracenf("[__SplashAttackProcess] Victim not yet hit, checking collision");
 
 	// NOTE : Snipe ����̰�..
 	if (NRaceData::ATTACK_TYPE_SNIPE == c_rAttackData.iAttackType)
@@ -325,115 +310,70 @@ BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 	D3DXVECTOR3 v3HitPosition;
 	if (rVictim.CheckCollisionDetection(&m_kSplashArea.SphereInstanceVector, &v3HitPosition))
 	{
-		Tracenf("[__SplashAttackProcess] COLLISION DETECTED! HitPos:(%.2f,%.2f,%.2f)", v3HitPosition.x, v3HitPosition.y, v3HitPosition.z);
-
 		rHittedInstanceMap.insert(std::make_pair(&rVictim, GetLocalTime()+c_rAttackData.fInvisibleTime));
 
 		int iCurrentHitCount = rHittedInstanceMap.size();
 		int iMaxHitCount = (0 == c_rAttackData.iHitLimitCount ? 16 : c_rAttackData.iHitLimitCount);
-		Tracenf("[__SplashAttackProcess] Hit count: %d / %d", iCurrentHitCount, iMaxHitCount);
+		//Tracef(" ------------------- Splash Hit : %d\n", iCurrentHitCount);
 
 		if (iCurrentHitCount > iMaxHitCount)
 		{
-			Tracenf("[__SplashAttackProcess] Hit count OVERFLOW - rejecting hit");
+			//Tracef(" ------------------- OVER FLOW :: Splash Hit Count : %d\n", iCurrentHitCount);
 			return FALSE;
 		}
 
 		NEW_SetAtkPixelPosition(NEW_GetCurPixelPositionRef());
 		__ProcessDataAttackSuccess(c_rAttackData, rVictim, v3HitPosition, m_kSplashArea.uSkill, m_kSplashArea.isEnableHitProcess);
-		Tracenf("[__SplashAttackProcess] HIT SUCCESS - processed");
 		return TRUE;
 	}
 
-	Tracenf("[__SplashAttackProcess] NO COLLISION detected");
 	return FALSE;
 }
 
 BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 {
-	Tracenf("[__NormalAttackProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
-
 	// Check Distance
 	// NOTE - �ϴ� ���� üũ�� �ϰ� ����
 	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_z - m_z, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
 
-	Tracenf("[__NormalAttackProcess] Distance check: %.2f pixels (squared)", fDistance);
-
 	extern bool IS_HUGE_RACE(unsigned int vnum);
 	if (IS_HUGE_RACE(rVictim.GetRace()))
 	{
 		if (fDistance >= 500.0f*500.0f)
-		{
-			Tracenf("[__NormalAttackProcess] Distance too far for huge race: %.2f >= 250000", fDistance);
 			return FALSE;
-		}
 	}
 	else
 	{
 		if (fDistance >= 300.0f*300.0f)
-		{
-			Tracenf("[__NormalAttackProcess] Distance too far for normal race: %.2f >= 90000", fDistance);
 			return FALSE;
-		}
 	}
 
-	Tracenf("[__NormalAttackProcess] Distance OK, checking isValidAttacking()");
 	if (!isValidAttacking())
-	{
-		Tracenf("[__NormalAttackProcess] isValidAttacking() = FALSE");
 		return FALSE;
-	}
-	Tracenf("[__NormalAttackProcess] isValidAttacking() = TRUE, checking motion data");
-
-	if (!m_pkCurRaceMotionData)
-	{
-		Tracenf("[__NormalAttackProcess] m_pkCurRaceMotionData is NULL");
-		return FALSE;
-	}
-	Tracenf("[__NormalAttackProcess] m_pkCurRaceMotionData is valid");
 
 	const float c_fAttackRadius = 20.0f;
 	const NRaceData::TMotionAttackData * pad = m_pkCurRaceMotionData->GetMotionAttackDataPointer();
 
-	if (!pad)
-	{
-		Tracenf("[__NormalAttackProcess] Motion attack data is NULL");
-		return FALSE;
-	}
-	Tracenf("[__NormalAttackProcess] Motion attack data valid, HitDataContainer size: %d", pad->HitDataContainer.size());
-
 	const float motiontime = GetAttackingElapsedTime();
-	Tracenf("[__NormalAttackProcess] Motion time: %.4f", motiontime);
 
 	NRaceData::THitDataContainer::const_iterator itorHitData = pad->HitDataContainer.begin();
-	int iHitDataIndex = 0;
-	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData, ++iHitDataIndex)
+	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData)
 	{
 		const NRaceData::THitData & c_rHitData = *itorHitData;
-
-		Tracenf("[__NormalAttackProcess] Processing HitData #%d", iHitDataIndex);
 
 		// NOTE : �̹� �¾Ҵ��� üũ
 		THitDataMap::iterator itHitData = m_HitDataMap.find(&c_rHitData);
 		if (itHitData != m_HitDataMap.end())
 		{
-			Tracenf("[__NormalAttackProcess] HitData found in map");
 			THittedInstanceMap & rHittedInstanceMap = itHitData->second;
 
 			THittedInstanceMap::iterator itInstance;
 			if ((itInstance=rHittedInstanceMap.find(&rVictim)) != rHittedInstanceMap.end())
 			{
 				if (pad->iMotionType==NRaceData::MOTION_TYPE_COMBO || itInstance->second > GetLocalTime())
-				{
-					Tracenf("[__NormalAttackProcess] Victim already hit, skipping");
 					continue;
-				}
 			}
-		}
-		else
-		{
-			Tracenf("[__NormalAttackProcess] HitData NOT in map (this is first attack with this motion)");
 		}
 
 		NRaceData::THitTimePositionMap::const_iterator range_start, range_end;
@@ -446,18 +386,6 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 			fTimeTolerance = 0.1f;
 		range_start = c_rHitData.mapHitPosition.lower_bound(motiontime - fTimeTolerance);
 		range_end = c_rHitData.mapHitPosition.upper_bound(motiontime);
-
-		int iHitPositionCount = 0;
-		for (NRaceData::THitTimePositionMap::const_iterator it = range_start; it != range_end; ++it)
-			iHitPositionCount++;
-
-		Tracenf("[__NormalAttackProcess] HitPosition time range: [%.4f, %.4f], found %d positions", motiontime - fTimeTolerance, motiontime, iHitPositionCount);
-
-		if (iHitPositionCount == 0)
-		{
-			Tracenf("[__NormalAttackProcess] NO HitPositions found in time range - attack will not register!");
-		}
-
 		float c = cosf(D3DXToRadian(GetRotation()));
 		float s = sinf(D3DXToRadian(GetRotation()));
 
@@ -557,29 +485,15 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 
 BOOL CActorInstance::AttackingProcess(CActorInstance & rVictim)
 {
-	Tracenf("[AttackingProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
-
 	if (rVictim.__isInvisible())
-	{
-		Tracenf("[AttackingProcess] Victim is invisible - skipping");
 		return FALSE;
-	}
 
-	Tracenf("[AttackingProcess] Trying __SplashAttackProcess");
 	if (__SplashAttackProcess(rVictim))
-	{
-		Tracenf("[AttackingProcess] __SplashAttackProcess returned TRUE");
 		return TRUE;
-	}
 
-	Tracenf("[AttackingProcess] __SplashAttackProcess failed, trying __NormalAttackProcess");
 	if (__NormalAttackProcess(rVictim))
-	{
-		Tracenf("[AttackingProcess] __NormalAttackProcess returned TRUE");
 		return TRUE;
-	}
 
-	Tracenf("[AttackingProcess] Both attack processes FAILED");
 	return FALSE;
 }
 
