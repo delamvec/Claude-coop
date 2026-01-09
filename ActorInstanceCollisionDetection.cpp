@@ -377,7 +377,14 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 		}
 
 		NRaceData::THitTimePositionMap::const_iterator range_start, range_end;
-		range_start = c_rHitData.mapHitPosition.lower_bound(motiontime-CTimer::Instance().GetElapsedSecond());
+		// FIXED: Increase time tolerance for hit detection (especially for ninja attacks)
+		// Original used only one frame: motiontime - GetElapsedSecond()
+		// Now using 5x larger window to ensure hit positions are found
+		float fTimeTolerance = CTimer::Instance().GetElapsedSecond() * 5.0f;
+		// Clamp minimum tolerance to 0.1 seconds for reliable detection
+		if (fTimeTolerance < 0.1f)
+			fTimeTolerance = 0.1f;
+		range_start = c_rHitData.mapHitPosition.lower_bound(motiontime - fTimeTolerance);
 		range_end = c_rHitData.mapHitPosition.upper_bound(motiontime);
 		float c = cosf(D3DXToRadian(GetRotation()));
 		float s = sinf(D3DXToRadian(GetRotation()));
