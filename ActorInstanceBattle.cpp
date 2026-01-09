@@ -602,7 +602,12 @@ bool CActorInstance::__CanPushDestActor(CActorInstance& rkActorDst)
 
 	if (rkActorDst.IsStun())
 		return true;
-	
+
+	// FIX: Skip owner check for PC targets (PvP)
+	// Owner check is only relevant for pets/summons in PvE
+	if (rkActorDst.IsPC())
+		return true;
+
 	if (rkActorDst.__GetOwnerVID()!=GetVirtualID())
 		return false;
 

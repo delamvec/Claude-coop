@@ -141,6 +141,10 @@ void CPythonPlayerEventHandler::OnHit(UINT uSkill, CActorInstance& rkActorVictim
 {
 	DWORD dwVIDVictim=rkActorVictim.GetVirtualID();
 
+	// LOG: OnHit called
+	TraceError("[ONHIT_CALLED] uSkill:%d VictimVID:%d isSendPacket:%d pBlending:%s",
+		uSkill, dwVIDVictim, isSendPacket ? 1 : 0, pBlending ? "YES" : "NULL");
+
 	// Update Target
 	CPythonPlayer::Instance().SetTarget(dwVIDVictim, FALSE);
 	// Update Target
@@ -184,6 +188,11 @@ if (isSendPacket)
     
     CPythonNetworkStream& rkStream=CPythonNetworkStream::Instance();
     rkStream.SendAttackPacket(uSkill, dwVIDVictim, TRUE, blend);  // ← TEĎ POUŽIJ
+}
+else
+{
+	TraceError("[ONHIT_SKIP_SEND] uSkill:%d VictimVID:%d - isSendPacket is FALSE, SendAttackPacket not called",
+		uSkill, dwVIDVictim);
 }
 
 	if (!rkActorVictim.IsPushing())
