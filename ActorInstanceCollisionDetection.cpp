@@ -266,24 +266,39 @@ bool CActorInstance::CreateCollisionInstancePiece(DWORD dwAttachingModelIndex, c
 
 BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 {
+	Tracenf("[__SplashAttackProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
+
 	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_z - m_z, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
+	Tracenf("[__SplashAttackProcess] Distance check: %.2f pixels (squared)", fDistance);
+
 	if (fDistance >= 1000.0f*1000.0f)
+	{
+		Tracenf("[__SplashAttackProcess] Distance too far: %.2f >= %f", fDistance, 1000.0f*1000.0f);
 		return FALSE;
+	}
 
 	// Check Distance
 	if (!__IsInSplashTime())
+	{
+		Tracenf("[__SplashAttackProcess] NOT in splash time");
 		return FALSE;
+	}
+	Tracenf("[__SplashAttackProcess] In splash time - proceeding");
 
 	const CRaceMotionData::TMotionAttackingEventData * c_pAttackingEvent = m_kSplashArea.c_pAttackingEvent;
 	const NRaceData::TAttackData & c_rAttackData = c_pAttackingEvent->AttackData;
 	THittedInstanceMap & rHittedInstanceMap = m_kSplashArea.HittedInstanceMap;
 
+	Tracenf("[__SplashAttackProcess] AttackType:%d SphereVector size:%d", c_rAttackData.iAttackType, m_kSplashArea.SphereInstanceVector.size());
+
 	// NOTE : �̹� ���ȴٸ� ���� �� ����
 	if (rHittedInstanceMap.end() != rHittedInstanceMap.find(&rVictim))
 	{
+		Tracenf("[__SplashAttackProcess] Victim already hit (in HittedInstanceMap)");
 		return FALSE;
 	}
+	Tracenf("[__SplashAttackProcess] Victim not yet hit, checking collision");
 
 	// NOTE : Snipe ����̰�..
 	if (NRaceData::ATTACK_TYPE_SNIPE == c_rAttackData.iAttackType)
@@ -310,23 +325,27 @@ BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 	D3DXVECTOR3 v3HitPosition;
 	if (rVictim.CheckCollisionDetection(&m_kSplashArea.SphereInstanceVector, &v3HitPosition))
 	{
+		Tracenf("[__SplashAttackProcess] COLLISION DETECTED! HitPos:(%.2f,%.2f,%.2f)", v3HitPosition.x, v3HitPosition.y, v3HitPosition.z);
+
 		rHittedInstanceMap.insert(std::make_pair(&rVictim, GetLocalTime()+c_rAttackData.fInvisibleTime));
 
 		int iCurrentHitCount = rHittedInstanceMap.size();
 		int iMaxHitCount = (0 == c_rAttackData.iHitLimitCount ? 16 : c_rAttackData.iHitLimitCount);
-		//Tracef(" ------------------- Splash Hit : %d\n", iCurrentHitCount);
+		Tracenf("[__SplashAttackProcess] Hit count: %d / %d", iCurrentHitCount, iMaxHitCount);
 
 		if (iCurrentHitCount > iMaxHitCount)
 		{
-			//Tracef(" ------------------- OVER FLOW :: Splash Hit Count : %d\n", iCurrentHitCount);
+			Tracenf("[__SplashAttackProcess] Hit count OVERFLOW - rejecting hit");
 			return FALSE;
 		}
 
 		NEW_SetAtkPixelPosition(NEW_GetCurPixelPositionRef());
 		__ProcessDataAttackSuccess(c_rAttackData, rVictim, v3HitPosition, m_kSplashArea.uSkill, m_kSplashArea.isEnableHitProcess);
+		Tracenf("[__SplashAttackProcess] HIT SUCCESS - processed");
 		return TRUE;
 	}
 
+	Tracenf("[__SplashAttackProcess] NO COLLISION detected");
 	return FALSE;
 }
 
