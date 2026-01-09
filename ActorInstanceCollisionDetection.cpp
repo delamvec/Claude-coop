@@ -407,17 +407,35 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 		THitDataMap::iterator itHitData = m_HitDataMap.find(&c_rHitData);
 		if (itHitData != m_HitDataMap.end())
 		{
+			TraceError("[__NormalAttackProcess] Found HitData in map");
 			THittedInstanceMap & rHittedInstanceMap = itHitData->second;
 
 			THittedInstanceMap::iterator itInstance;
 			if ((itInstance=rHittedInstanceMap.find(&rVictim)) != rHittedInstanceMap.end())
 			{
+				float localTime = GetLocalTime();
+				float victimHitTime = itInstance->second;
+				TraceError("[__NormalAttackProcess] Victim found in hit map - LocalTime:%.2f VictimHitTime:%.2f MotionType:%d",
+					localTime, victimHitTime, pad->iMotionType);
+
 				if (pad->iMotionType==NRaceData::MOTION_TYPE_COMBO || itInstance->second > GetLocalTime())
 				{
-					TraceError("[__NormalAttackProcess] Victim already hit recently, skipping");
+					TraceError("[__NormalAttackProcess] Victim already hit recently, skipping (COMBO or time check failed)");
 					continue;
 				}
+				else
+				{
+					TraceError("[__NormalAttackProcess] Victim was hit before but cooldown expired, allowing new hit");
+				}
 			}
+			else
+			{
+				TraceError("[__NormalAttackProcess] Victim NOT found in hit map for this HitData");
+			}
+		}
+		else
+		{
+			TraceError("[__NormalAttackProcess] HitData NOT in map (this is first attack with this motion)");
 		}
 
 		NRaceData::THitTimePositionMap::const_iterator range_start, range_end;
@@ -433,9 +451,16 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 		float c = cosf(D3DXToRadian(GetRotation()));
 		float s = sinf(D3DXToRadian(GetRotation()));
 
+		if (hitPositionCount == 0)
+		{
+			TraceError("[__NormalAttackProcess] NO HitPositions found in time range - attack will not register!");
+		}
+
 		int sphereIndex = 0;
 		for(;range_start!=range_end;++range_start, ++sphereIndex)
 		{
+			TraceError("[__NormalAttackProcess] Processing sphere #%d", sphereIndex);
+
 			const CDynamicSphereInstance& dsiSrc=range_start->second;
 
 			CDynamicSphereInstance dsi;
@@ -471,9 +496,12 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 					const CDynamicSphereInstance& sub = *dsit;
 					if (DetectCollisionDynamicZCylinderVSDynamicZCylinder(dsi, sub))
 					{
+						TraceError("[__NormalAttackProcess] COLLISION DETECTED! Defender sphere #%d", index);
+
 						THitDataMap::iterator itHitData = m_HitDataMap.find(&c_rHitData);
 						if (itHitData == m_HitDataMap.end())
 						{
+							TraceError("[__NormalAttackProcess] First hit - adding victim to hit map");
 							THittedInstanceMap HittedInstanceMap;
 							HittedInstanceMap.insert(std::make_pair(&rVictim, GetLocalTime()+pad->fInvisibleTime));
 							//HittedInstanceMap.insert(std::make_pair(&rVictim, GetLocalTime()+HIT_COOL_TIME));
@@ -483,6 +511,7 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 						}
 						else
 						{
+							TraceError("[__NormalAttackProcess] Subsequent hit - updating hit map");
 							itHitData->second.insert(std::make_pair(&rVictim, GetLocalTime()+pad->fInvisibleTime));
 							//itHitData->second.insert(std::make_pair(&rVictim, GetLocalTime()+HIT_COOL_TIME));
 
@@ -494,6 +523,7 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 							{
 								if (iCurrentHitCount > 16)
 								{
+									TraceError("[__NormalAttackProcess] Hit count overflow (NORMAL/COMBO): %d > 16", iCurrentHitCount);
 									//Tracef(" Type NORMAL :: Overflow - Can't process, skip\n");
 									return FALSE;
 								}
@@ -502,6 +532,7 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 							{
 								if (iCurrentHitCount > pad->iHitLimitCount)
 								{
+									TraceError("[__NormalAttackProcess] Hit count overflow (SKILL): %d > %d", iCurrentHitCount, pad->iHitLimitCount);
 									//Tracef(" Type SKILL :: Overflow - Can't process, skip\n");
 									return FALSE;
 								}
@@ -514,10 +545,12 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 						extern bool IS_HUGE_RACE(unsigned int vnum);
 						if (IS_HUGE_RACE(rVictim.GetRace()))
 						{
-							v3HitPosition = (GetPosition() + sub.v3Position) * 0.5f;							
+							v3HitPosition = (GetPosition() + sub.v3Position) * 0.5f;
 						}
-						
+
+						TraceError("[__NormalAttackProcess] Calling __ProcessDataAttackSuccess - uSkill:%d", m_kCurMotNode.uSkill);
 						__ProcessDataAttackSuccess(*pad, rVictim, v3HitPosition, m_kCurMotNode.uSkill);
+						TraceError("[__NormalAttackProcess] Attack success processed, returning TRUE");
 						return TRUE;
 					}
 				}
