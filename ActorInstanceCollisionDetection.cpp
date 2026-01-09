@@ -557,15 +557,29 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 
 BOOL CActorInstance::AttackingProcess(CActorInstance & rVictim)
 {
+	Tracenf("[AttackingProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
+
 	if (rVictim.__isInvisible())
+	{
+		Tracenf("[AttackingProcess] Victim is invisible - skipping");
 		return FALSE;
+	}
 
+	Tracenf("[AttackingProcess] Trying __SplashAttackProcess");
 	if (__SplashAttackProcess(rVictim))
+	{
+		Tracenf("[AttackingProcess] __SplashAttackProcess returned TRUE");
 		return TRUE;
+	}
 
+	Tracenf("[AttackingProcess] __SplashAttackProcess failed, trying __NormalAttackProcess");
 	if (__NormalAttackProcess(rVictim))
+	{
+		Tracenf("[AttackingProcess] __NormalAttackProcess returned TRUE");
 		return TRUE;
+	}
 
+	Tracenf("[AttackingProcess] Both attack processes FAILED");
 	return FALSE;
 }
 
