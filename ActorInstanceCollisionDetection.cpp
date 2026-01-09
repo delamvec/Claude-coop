@@ -332,26 +332,43 @@ BOOL CActorInstance::__SplashAttackProcess(CActorInstance & rVictim)
 
 BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 {
+	TraceError("[__NormalAttackProcess] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rVictim.GetVirtualID());
+
 	// Check Distance
 	// NOTE - �ϴ� ���� üũ�� �ϰ� ����
 	// BUGFIX: Y component should use m_y, not m_z
 	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_y - m_y, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
 
+	TraceError("[__NormalAttackProcess] Distance check: %.2f pixels (squared)", fDistance);
+
 	extern bool IS_HUGE_RACE(unsigned int vnum);
 	if (IS_HUGE_RACE(rVictim.GetRace()))
 	{
 		if (fDistance >= 500.0f*500.0f)
+		{
+			TraceError("[__NormalAttackProcess] Distance too far for HUGE race: %.2f >= %d", fDistance, 500*500);
 			return FALSE;
+		}
 	}
 	else
 	{
 		if (fDistance >= 300.0f*300.0f)
+		{
+			TraceError("[__NormalAttackProcess] Distance too far for normal race: %.2f >= %d", fDistance, 300*300);
 			return FALSE;
+		}
 	}
 
+	TraceError("[__NormalAttackProcess] Distance OK, checking isValidAttacking()");
+
 	if (!isValidAttacking())
+	{
+		TraceError("[__NormalAttackProcess] isValidAttacking() returned FALSE");
 		return FALSE;
+	}
+
+	TraceError("[__NormalAttackProcess] isValidAttacking() = TRUE, checking motion data");
 
 	// CRITICAL: Check for NULL pointers before use (Debug vs Release issue)
 	if (!m_pkCurRaceMotionData)
@@ -359,6 +376,8 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 		TraceError("[COLLISION_ERROR] m_pkCurRaceMotionData is NULL for actor VID:%d", GetVirtualID());
 		return FALSE;
 	}
+
+	TraceError("[__NormalAttackProcess] m_pkCurRaceMotionData is valid");
 
 	const float c_fAttackRadius = 20.0f;
 	const NRaceData::TMotionAttackData * pad = m_pkCurRaceMotionData->GetMotionAttackDataPointer();
@@ -370,12 +389,19 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 		return FALSE;
 	}
 
+	TraceError("[__NormalAttackProcess] Motion attack data valid, HitDataContainer size: %d", pad->HitDataContainer.size());
+
 	const float motiontime = GetAttackingElapsedTime();
 
+	TraceError("[__NormalAttackProcess] Motion time: %.4f", motiontime);
+
 	NRaceData::THitDataContainer::const_iterator itorHitData = pad->HitDataContainer.begin();
-	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData)
+	int hitDataIndex = 0;
+	for (; itorHitData != pad->HitDataContainer.end(); ++itorHitData, ++hitDataIndex)
 	{
 		const NRaceData::THitData & c_rHitData = *itorHitData;
+
+		TraceError("[__NormalAttackProcess] Processing HitData #%d", hitDataIndex);
 
 		// NOTE : �̹� �¾Ҵ��� üũ
 		THitDataMap::iterator itHitData = m_HitDataMap.find(&c_rHitData);
@@ -387,17 +413,28 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 			if ((itInstance=rHittedInstanceMap.find(&rVictim)) != rHittedInstanceMap.end())
 			{
 				if (pad->iMotionType==NRaceData::MOTION_TYPE_COMBO || itInstance->second > GetLocalTime())
+				{
+					TraceError("[__NormalAttackProcess] Victim already hit recently, skipping");
 					continue;
+				}
 			}
 		}
 
 		NRaceData::THitTimePositionMap::const_iterator range_start, range_end;
 		range_start = c_rHitData.mapHitPosition.lower_bound(motiontime-CTimer::Instance().GetElapsedSecond());
 		range_end = c_rHitData.mapHitPosition.upper_bound(motiontime);
+
+		int hitPositionCount = 0;
+		for (auto it = range_start; it != range_end; ++it) hitPositionCount++;
+
+		TraceError("[__NormalAttackProcess] HitPosition time range: [%.4f, %.4f], found %d positions",
+			motiontime-CTimer::Instance().GetElapsedSecond(), motiontime, hitPositionCount);
+
 		float c = cosf(D3DXToRadian(GetRotation()));
 		float s = sinf(D3DXToRadian(GetRotation()));
 
-		for(;range_start!=range_end;++range_start)
+		int sphereIndex = 0;
+		for(;range_start!=range_end;++range_start, ++sphereIndex)
 		{
 			const CDynamicSphereInstance& dsiSrc=range_start->second;
 
