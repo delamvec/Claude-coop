@@ -579,19 +579,33 @@ BOOL CInstanceBase::CheckAdvancing()
 
 BOOL CInstanceBase::CheckAttacking(CInstanceBase& rkInstVictim)
 {
+	Tracenf("[CheckAttacking] ENTRY - AttackerVID:%d VictimVID:%d", GetVirtualID(), rkInstVictim.GetVirtualID());
+
 	if (IsInSafe())
+	{
+		Tracenf("[CheckAttacking] Attacker is in safe zone");
 		return FALSE;
+	}
 
 	if (rkInstVictim.IsInSafe())
+	{
+		Tracenf("[CheckAttacking] Victim is in safe zone");
 		return FALSE;
+	}
 
 #ifdef __MOVIE_MODE__
+	Tracenf("[CheckAttacking] MOVIE_MODE is enabled");
 	return FALSE;
 #endif
 
+	Tracenf("[CheckAttacking] Calling m_GraphicThingInstance.AttackingProcess");
 	if (!m_GraphicThingInstance.AttackingProcess(rkInstVictim.m_GraphicThingInstance))
+	{
+		Tracenf("[CheckAttacking] AttackingProcess returned FALSE");
 		return FALSE;
+	}
 
+	Tracenf("[CheckAttacking] AttackingProcess returned TRUE - HIT REGISTERED!");
 	return TRUE;
 }
 
