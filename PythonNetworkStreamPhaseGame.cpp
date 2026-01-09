@@ -2642,10 +2642,11 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
 
     TraceError("[ATTACK_AFTER_CONVERT] lX,lY after conversion: (%d,%d)", kPacketAtk.lX, kPacketAtk.lY);
 
-    // fSync values should be GLOBAL coordinates (after conversion), not local!
-    // Server uses these for distance validation
-    kPacketAtk.fSyncDestX = (float)kPacketAtk.lX;
-    kPacketAtk.fSyncDestY = (float)kPacketAtk.lY;
+    // fSync values should be ATTACKER position in GLOBAL coordinates
+    // Server validates: distance(attacker_server_pos, fSyncDest_from_client) < 500
+    // Therefore fSyncDest must be the attacker's position (lSX/lSY), NOT destination (lX/lY)
+    kPacketAtk.fSyncDestX = (float)kPacketAtk.lSX;
+    kPacketAtk.fSyncDestY = (float)kPacketAtk.lSY;
     kPacketAtk.dwBlendDuration = (unsigned int) (sBlending.duration *1000);
     kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
     kPacketAtk.dwTime = ELTimer_GetServerMSec();

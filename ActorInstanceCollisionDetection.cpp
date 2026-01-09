@@ -334,7 +334,8 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 {
 	// Check Distance
 	// NOTE - �ϴ� ���� üũ�� �ϰ� ����
-	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_z - m_z, rVictim.m_z - m_z);
+	// BUGFIX: Y component should use m_y, not m_z
+	D3DXVECTOR3 v3Distance(rVictim.m_x - m_x, rVictim.m_y - m_y, rVictim.m_z - m_z);
 	float fDistance = D3DXVec3LengthSq(&v3Distance);
 
 	extern bool IS_HUGE_RACE(unsigned int vnum);
@@ -352,8 +353,22 @@ BOOL CActorInstance::__NormalAttackProcess(CActorInstance & rVictim)
 	if (!isValidAttacking())
 		return FALSE;
 
+	// CRITICAL: Check for NULL pointers before use (Debug vs Release issue)
+	if (!m_pkCurRaceMotionData)
+	{
+		TraceError("[COLLISION_ERROR] m_pkCurRaceMotionData is NULL for actor VID:%d", GetVirtualID());
+		return FALSE;
+	}
+
 	const float c_fAttackRadius = 20.0f;
 	const NRaceData::TMotionAttackData * pad = m_pkCurRaceMotionData->GetMotionAttackDataPointer();
+
+	// CRITICAL: Check if motion attack data is valid
+	if (!pad)
+	{
+		TraceError("[COLLISION_ERROR] GetMotionAttackDataPointer returned NULL for actor VID:%d", GetVirtualID());
+		return FALSE;
+	}
 
 	const float motiontime = GetAttackingElapsedTime();
 
