@@ -2628,7 +2628,7 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     kPacketAtk.lX =  (long)sBlending.dest.x;
     kPacketAtk.lY =  (long)(-sBlending.dest.y);   // FIX: Invert Y (game uses negative Y coordinates)
     kPacketAtk.lSX = (long)sBlending.source.x;
-    kPacketAtk.lSY = (long)(-sBlending.source.y); // FIX: Invert Y (game uses negative Y coordinates)
+    kPacketAtk.lSY = (long)sBlending.source.y; // Source Y is already positive from NEW_GetCurPixelPositionRef()
     kPacketAtk.fSyncDestX = sBlending.dest.x;
     // sources and dest are normalized with both coordinates positive
     // since fSync are ment to be broadcasted to other clients, the Y has to preserve the negative coord
