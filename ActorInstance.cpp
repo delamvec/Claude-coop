@@ -1283,12 +1283,10 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData & c
     }
     else
     {
+        // Create hit effects - skip for friendly fire on players
         if(c_rAttackData.isEnemy == 0)
         {
-            if(rVictim.IsEnemy() || rVictim.IsPC() || rVictim.IsBoss() || rVictim.IsStone())
-                {
-                    return;
-                }
+            // Skip effects for friendly fire, but DON'T return - we still need to call __OnHit!
         }
         else
         {
@@ -1296,7 +1294,7 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData & c
             if (m_dwBattleHitEffectID)
                 rkEftMgr.CreateEffect(m_dwBattleHitEffectID, vec3Effect, D3DXVECTOR3(0.0f, 0.0f, fHeight));
             if (m_dwBattleAttachEffectID)
-                rVictim.AttachEffectByID(0, NULL, m_dwBattleAttachEffectID);  
+                rVictim.AttachEffectByID(0, NULL, m_dwBattleAttachEffectID);
         }
     }
 
@@ -1323,7 +1321,7 @@ void CActorInstance::__ProcessDataAttackSuccess(const NRaceData::TAttackData & c
             {  
                 if(rVictim.IsEnemy() || rVictim.IsPC() || rVictim.IsBoss() || rVictim.IsStone())
                 {
-                    return;
+                    // Skip GREAT hit animation for PvP, but DON'T return - we need to call __OnHit!
                 }
                 else
                 {
