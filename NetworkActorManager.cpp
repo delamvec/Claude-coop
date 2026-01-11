@@ -567,21 +567,38 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
 
     SNetworkActorData& rkNetActorData = f->second;
 
-    // FIX: Don't sync victim position from server broadcast!
-    // Victim knockback is handled by local client physics (__OnHit → HIT_PUSH_APPLY)
-    // Server packet contains ATTACKER position (in k_pSyncPos), NOT victim position
-    // Syncing would pull victim to attacker's location!
+    // Apply server-validated victim knockback for perfect synchronization
+    // k_pSyncPos contains VICTIM destination (after knockback) from server
+    // Server validated knockback physics, distance, and direction
+    // All clients must apply SAME knockback to prevent desync
 
     CInstanceBase* pkInstFind = __FindActor(rkNetActorData);
     if (pkInstFind)
     {
-        // Just notify victim that server attack happened (for damage calculation)
+        // Notify victim that server attack happened (for damage calculation)
         pkInstFind->ServerAttack(dwAttacakerVID);
 
-        // NOTE: Removed position sync/blending here because:
-        // 1. k_pSyncPos contains ATTACKER position (not victim dest)
-        // 2. Victim knockback is calculated locally via physics
-        // 3. Server broadcast is for notification only, not position sync
+        // Apply server-validated knockback position
+        if (dwBlendDuration > 0 && k_pSyncPos.x != 0 && k_pSyncPos.y != 0)
+        {
+            const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
+
+            // If this is the attacking client, and victim is already blending from local calculation
+            // Update the blend target to match server-validated position
+            if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15)
+            {
+                // Smooth update: adjust existing blend to server position
+                pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
+            }
+            else
+            {
+                // New blend: apply server knockback (for other clients or if no local blend)
+                pkInstFind->SetBlendingPosition(k_pSyncPos, dwBlendDuration / 1000.0f);
+            }
+
+            // Update network actor data
+            rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+        }
     }
 }
 
