@@ -1828,57 +1828,77 @@ void CInputMain::Attack(LPCHARACTER ch, const BYTE header, const char* data)
 					}
 				}
 
-				// VALIDACE #2: ATTACKER POSITION CONSISTENCY
-				// Attacker should not move significantly during attack (only animation offset)
-				// lSX/lSY and lX/lY should be nearly identical (attacker's position)
-				// NOTE: Victim knockback is handled by ch->Attack(), not in packet
-				if (packMelee->lX != 0 && packMelee->lY != 0)
+				// VALIDACE #2: KNOCKBACK DISTANCE (Anti-cheat: teleport/knockback hack)
+				// Client sends victim knockback: lSX/lSY (before) → lX/lY (after)
+				// Validate knockback physics: Force 3-15 → distance ~10-400px
+				if (packMelee->dwBlendDuration > 0 && packMelee->lX != 0 && packMelee->lY != 0)
 				{
-					float fPosShift = DISTANCE_SQRT(
+					float fKnockbackDist = DISTANCE_SQRT(
 						packMelee->lSX - packMelee->lX,
 						packMelee->lSY - packMelee->lY
 					);
 
-					sys_log(0, "[SERVER_ATTACK_POS_SHIFT] Src:(%ld,%ld) Dst:(%ld,%ld) Shift:%.1f MaxAllowed:50",
+					sys_log(0, "[SERVER_ATTACK_KNOCKBACK] VictimSrc:(%ld,%ld) VictimDst:(%ld,%ld) Distance:%.1f MaxAllowed:800",
 						packMelee->lSX, packMelee->lSY,
 						packMelee->lX, packMelee->lY,
-						fPosShift);
+						fKnockbackDist);
 
-					// Attacker should barely move during attack animation (max 50px for animation)
-					if (fPosShift > 50)
+					// Max realistic knockback: Force 20 * ~30-40 multiplier ≈ 600-800 pixels
+					if (fKnockbackDist > 800)
 					{
-						sys_log(0, "[SERVER_ATTACK_REJECT] Attacker position shift too large!");
+						sys_log(0, "[SERVER_ATTACK_REJECT] Knockback distance too large! Possible hack.");
 						return;
 					}
 				}
 
-				// VALIDACE #3: SOURCE POSITION CHECK (Anti-desync & anti-speed-hack)
-				float fSourceDist = DISTANCE_SQRT(
-					ch->GetX() - packMelee->lSX,
-					ch->GetY() - packMelee->lSY
-				);
-
-				sys_log(0, "[SERVER_ATTACK_SOURCE] ServerPos:(%ld,%ld) PacketSrc:(%ld,%ld) Dist:%.1f MaxAllowed:300",
-					ch->GetX(), ch->GetY(),
-					packMelee->lSX, packMelee->lSY,
-					fSourceDist);
-
-				// If player is too far from claimed position = DESYNC or SPEED-HACK
-				if (fSourceDist > 300)
+				// VALIDACE #3: KNOCKBACK DIRECTION (Anti-cheat: reverse knockback)
+				// Victim must be knocked AWAY from attacker, not pulled toward
+				if (packMelee->dwBlendDuration > 0 && packMelee->lX != 0 && packMelee->lY != 0)
 				{
-					sys_log(0, "[SERVER_ATTACK_REJECT] Source position mismatch! Desync or speed-hack detected.");
-					return;
+					// Distance: attacker → victim BEFORE knockback
+					float fDistBefore = DISTANCE_SQRT(
+						ch->GetX() - packMelee->lSX,
+						ch->GetY() - packMelee->lSY
+					);
+
+					// Distance: attacker → victim AFTER knockback
+					float fDistAfter = DISTANCE_SQRT(
+						ch->GetX() - packMelee->lX,
+						ch->GetY() - packMelee->lY
+					);
+
+					sys_log(0, "[SERVER_ATTACK_DIRECTION] AttackerPos:(%ld,%ld) DistBefore:%.1f DistAfter:%.1f",
+						ch->GetX(), ch->GetY(), fDistBefore, fDistAfter);
+
+					// After knockback, victim should be FURTHER away (or same if no knockback)
+					// Allow small tolerance (50px) for edge cases
+					if (fDistAfter < fDistBefore - 50)
+					{
+						sys_log(0, "[SERVER_ATTACK_REJECT] Reverse knockback detected! Victim pulled toward attacker.");
+						return;
+					}
 				}
 
-				// ============ ATTACKER POSITION SYNC (if needed) ============
-				// NOTE: Client now sends attacker's actual position, not victim's knockback destination
-				// BlendSync is only needed if there's significant server-client position mismatch
-				// Normally dwBlendDuration = 0 since attacker doesn't move during attack
-				if (packMelee->dwBlendDuration > 0)
+				// VALIDACE #4: VICTIM POSITION SANITY (Anti-desync)
+				// Check victim's current position vs packet source position
+				if (packMelee->lSX != 0 && packMelee->lSY != 0)
 				{
-					sys_log(0, "[SERVER_ATTACK_BLEND_SYNC] Unusual: dwBlendDuration=%u (normally 0 for attacker)",
-						packMelee->dwBlendDuration);
-					// Don't sync - attacker position is already validated above
+					float fVictimPosDiff = DISTANCE_SQRT(
+						victim->GetX() - packMelee->lSX,
+						victim->GetY() - packMelee->lSY
+					);
+
+					sys_log(0, "[SERVER_ATTACK_VICTIM_POS] ServerVictim:(%ld,%ld) PacketVictim:(%ld,%ld) Diff:%.1f MaxAllowed:500",
+						victim->GetX(), victim->GetY(),
+						packMelee->lSX, packMelee->lSY,
+						fVictimPosDiff);
+
+					// Allow larger tolerance (500px) since victim may be moving
+					if (fVictimPosDiff > 500)
+					{
+						sys_log(0, "[SERVER_ATTACK_REJECT] Victim position desync too large!");
+						return;
+					}
 				}
 
 				// ============ EXECUTE ATTACK (ONCE!) ============
