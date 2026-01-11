@@ -2626,16 +2626,17 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     kPacketAtk.dwVID = dwVIDVictim;
     kPacketAtk.bPacket = bPacket;
 
-    // FIX: Use ATTACKER's position, not victim's blending position!
-    // sBlending contains VICTIM's knockback destination, which was incorrectly
-    // sent as attacker's position, causing the attacker to teleport to victim's location
-    kPacketAtk.lX =  (long)kPlayerPos.x;  // Attacker's current X
-    kPacketAtk.lY =  (long)kPlayerPos.y;  // Attacker's current Y (already positive)
-    kPacketAtk.lSX = (long)kPlayerPos.x;  // Attacker doesn't move during attack animation
-    kPacketAtk.lSY = (long)kPlayerPos.y;  // Use same position for source
-    kPacketAtk.fSyncDestX = kPlayerPos.x; // Local coords for anti-cheat validation
-    kPacketAtk.fSyncDestY = kPlayerPos.y; // Already positive
-    kPacketAtk.dwBlendDuration = 0;       // Attacker doesn't blend, only victim does
+    // Send VICTIM's knockback trajectory for server validation and broadcast
+    // sBlending contains victim's knockback: source (before) → dest (after)
+    // Server will validate physics and broadcast to all clients for synchronization
+
+    kPacketAtk.lX =  (long)sBlending.dest.x;      // VICTIM destination (after knockback)
+    kPacketAtk.lY =  (long)(-sBlending.dest.y);   // Inverted Y (game uses negative internally)
+    kPacketAtk.lSX = (long)sBlending.source.x;    // VICTIM source (before knockback)
+    kPacketAtk.lSY = (long)sBlending.source.y;    // Source Y is positive from GetCurPixelPositionRef()
+    kPacketAtk.fSyncDestX = sBlending.dest.x;     // Local coords for dual validation
+    kPacketAtk.fSyncDestY = -sBlending.dest.y;    // Negative Y for broadcast
+    kPacketAtk.dwBlendDuration = (unsigned int)(sBlending.duration * 1000); // Knockback duration
     kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
     kPacketAtk.dwTime = ELTimer_GetServerMSec();
 
