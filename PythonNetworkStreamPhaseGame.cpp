@@ -1686,27 +1686,12 @@ bool CPythonNetworkStream::RecvCharacterAttackPacket()
         0
     };
 
-    // Position blend
-    if (kPacket.dwBlendDuration > 0)
-    {
-        CInstanceBase* pAttacker = CPythonCharacterManager::Instance().GetInstancePtr(kPacket.dwAttacakerVID);
+    // DON'T blend attacker here!
+    // Server packet contains VICTIM destination (after knockback)
+    // Blending is applied to VICTIM in AttackActor() below
+    // Attacker stays in place (no blending needed)
 
-        if (pAttacker)
-        {
-            TraceError("[GC_ATTACK_RECV] Setting blend position for attacker VID:%d to (%.2f,%.2f) duration:%.3fs",
-                kPacket.dwAttacakerVID,
-                tSyncPosition.x, tSyncPosition.y,
-                kPacket.dwBlendDuration / 1000.0f
-            );
-            pAttacker->SetBlendingPosition(tSyncPosition, kPacket.dwBlendDuration / 1000.0f);
-        }
-        else
-        {
-            TraceError("[GC_ATTACK_RECV] WARNING: Attacker VID:%d not found for position blending!", kPacket.dwAttacakerVID);
-        }
-    }
-
-    // Původní útok
+    // Call AttackActor to apply server-validated knockback to VICTIM
     TraceError("[GC_ATTACK_RECV] Calling AttackActor - VictimVID:%d AttackerVID:%d", kPacket.dwVID, kPacket.dwAttacakerVID);
     m_rokNetActorMgr->AttackActor(
         kPacket.dwVID,
