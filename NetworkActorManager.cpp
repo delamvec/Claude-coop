@@ -567,26 +567,21 @@ void CNetworkActorManager::AttackActor(DWORD dwVID, DWORD dwAttacakerVID, LONG l
 
     SNetworkActorData& rkNetActorData = f->second;
 
-    if (k_pSyncPos.x && k_pSyncPos.y) {
-        CInstanceBase* pkInstFind = __FindActor(rkNetActorData);
-        if (pkInstFind)
-        {
-            const bool bProcessingClientAttack = pkInstFind->ProcessingClientAttack(dwAttacakerVID);
-            pkInstFind->ServerAttack(dwAttacakerVID);
-           
-            // if already blending, update
-            if (bProcessingClientAttack && pkInstFind->IsPushing() && pkInstFind->GetBlendingRemainTime() > 0.15) {
-                pkInstFind->SetBlendingPosition(k_pSyncPos, pkInstFind->GetBlendingRemainTime());
-            } else {
-                // otherwise sync
-                //pkInstFind->SCRIPT_SetPixelPosition(k_pSyncPos.x, k_pSyncPos.y);
-                long lPosX = long(k_pSyncPos.x);
-				long lPosY = long(k_pSyncPos.y);
-				pkInstFind->NEW_SyncPixelPosition(lPosX, lPosY);
-            }
-        }
+    // FIX: Don't sync victim position from server broadcast!
+    // Victim knockback is handled by local client physics (__OnHit → HIT_PUSH_APPLY)
+    // Server packet contains ATTACKER position (in k_pSyncPos), NOT victim position
+    // Syncing would pull victim to attacker's location!
 
-        rkNetActorData.SetPosition(long(k_pSyncPos.x), long(k_pSyncPos.y));
+    CInstanceBase* pkInstFind = __FindActor(rkNetActorData);
+    if (pkInstFind)
+    {
+        // Just notify victim that server attack happened (for damage calculation)
+        pkInstFind->ServerAttack(dwAttacakerVID);
+
+        // NOTE: Removed position sync/blending here because:
+        // 1. k_pSyncPos contains ATTACKER position (not victim dest)
+        // 2. Victim knockback is calculated locally via physics
+        // 3. Server broadcast is for notification only, not position sync
     }
 }
 
