@@ -1828,23 +1828,26 @@ void CInputMain::Attack(LPCHARACTER ch, const BYTE header, const char* data)
 					}
 				}
 
-				// VALIDACE #2: KNOCKBACK DISTANCE CHECK (Anti-cheat: teleport hack)
-				if (packMelee->dwBlendDuration > 0 && packMelee->lX != 0 && packMelee->lY != 0)
+				// VALIDACE #2: ATTACKER POSITION CONSISTENCY
+				// Attacker should not move significantly during attack (only animation offset)
+				// lSX/lSY and lX/lY should be nearly identical (attacker's position)
+				// NOTE: Victim knockback is handled by ch->Attack(), not in packet
+				if (packMelee->lX != 0 && packMelee->lY != 0)
 				{
-					float fKnockbackDist = DISTANCE_SQRT(
+					float fPosShift = DISTANCE_SQRT(
 						packMelee->lSX - packMelee->lX,
 						packMelee->lSY - packMelee->lY
 					);
 
-					sys_log(0, "[SERVER_ATTACK_KNOCKBACK] Src:(%ld,%ld) Dst:(%ld,%ld) Distance:%.1f MaxAllowed:800",
+					sys_log(0, "[SERVER_ATTACK_POS_SHIFT] Src:(%ld,%ld) Dst:(%ld,%ld) Shift:%.1f MaxAllowed:50",
 						packMelee->lSX, packMelee->lSY,
 						packMelee->lX, packMelee->lY,
-						fKnockbackDist);
+						fPosShift);
 
-					// Max realistic knockback: Force 20 * ~30-40 multiplier ≈ 600-800 pixels
-					if (fKnockbackDist > 800)
+					// Attacker should barely move during attack animation (max 50px for animation)
+					if (fPosShift > 50)
 					{
-						sys_log(0, "[SERVER_ATTACK_REJECT] Knockback distance too large!");
+						sys_log(0, "[SERVER_ATTACK_REJECT] Attacker position shift too large!");
 						return;
 					}
 				}
@@ -1867,13 +1870,15 @@ void CInputMain::Attack(LPCHARACTER ch, const BYTE header, const char* data)
 					return;
 				}
 
-				// ============ BLEND SYNC ============
-				if (packMelee->dwBlendDuration > 0 && packMelee->lX != 0 && packMelee->lY != 0)
+				// ============ ATTACKER POSITION SYNC (if needed) ============
+				// NOTE: Client now sends attacker's actual position, not victim's knockback destination
+				// BlendSync is only needed if there's significant server-client position mismatch
+				// Normally dwBlendDuration = 0 since attacker doesn't move during attack
+				if (packMelee->dwBlendDuration > 0)
 				{
-					sys_log(0, "[SERVER_ATTACK_BLEND_SYNC] Syncing attacker to:(%ld,%ld) duration:%ums",
-						packMelee->lX, packMelee->lY, packMelee->dwBlendDuration);
-
-					ch->BlendSync(packMelee->lX, packMelee->lY, packMelee->dwBlendDuration);
+					sys_log(0, "[SERVER_ATTACK_BLEND_SYNC] Unusual: dwBlendDuration=%u (normally 0 for attacker)",
+						packMelee->dwBlendDuration);
+					// Don't sync - attacker position is already validated above
 				}
 
 				// ============ EXECUTE ATTACK (ONCE!) ============
