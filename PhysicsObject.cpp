@@ -87,13 +87,15 @@ void CPhysicsObject::IncreaseExternalForce(const D3DXVECTOR3 & c_rvBasePosition,
 	{
 		// Log warning but don't block - use safe default mass
 		Tracenf("CPhysicsObject::IncreaseExternalForce - Mass is very small (%f), using default mass 1.0", m_fMass);
-		m_v3Acceleration = m_v3Direction * (fForce / 1.0f);
+		m_v3Acceleration = m_v3Direction * ((fForce * 7.0f) / 1.0f);
 		m_v3Velocity = m_v3Acceleration;
 	}
 	else
 	{
 		// Accumulate Acceleration by External Force
-		m_v3Acceleration = m_v3Direction * (fForce / m_fMass);
+		// Knockback multiplier (7.0f) to ensure adequate distance:
+		// Force 3 → ~91px, Force 4 → ~168px, Force 15 → ~2569px
+		m_v3Acceleration = m_v3Direction * ((fForce * 7.0f) / m_fMass);
 		m_v3Velocity = m_v3Acceleration;
 	}
 
