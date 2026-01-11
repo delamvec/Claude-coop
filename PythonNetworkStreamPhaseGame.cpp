@@ -2625,15 +2625,17 @@ bool CPythonNetworkStream::SendAttackPacket(UINT uMotAttack, DWORD dwVIDVictim, 
     kPacketAtk.bType = uMotAttack;
     kPacketAtk.dwVID = dwVIDVictim;
     kPacketAtk.bPacket = bPacket;
-    kPacketAtk.lX =  (long)sBlending.dest.x;
-    kPacketAtk.lY =  (long)(-sBlending.dest.y);   // FIX: Invert Y (game uses negative Y coordinates)
-    kPacketAtk.lSX = (long)sBlending.source.x;
-    kPacketAtk.lSY = (long)sBlending.source.y; // Source Y is already positive from NEW_GetCurPixelPositionRef()
-    kPacketAtk.fSyncDestX = sBlending.dest.x;
-    // sources and dest are normalized with both coordinates positive
-    // since fSync are ment to be broadcasted to other clients, the Y has to preserve the negative coord
-    kPacketAtk.fSyncDestY = -sBlending.dest.y;
-    kPacketAtk.dwBlendDuration = (unsigned int) (sBlending.duration *1000);
+
+    // FIX: Use ATTACKER's position, not victim's blending position!
+    // sBlending contains VICTIM's knockback destination, which was incorrectly
+    // sent as attacker's position, causing the attacker to teleport to victim's location
+    kPacketAtk.lX =  (long)kPlayerPos.x;  // Attacker's current X
+    kPacketAtk.lY =  (long)kPlayerPos.y;  // Attacker's current Y (already positive)
+    kPacketAtk.lSX = (long)kPlayerPos.x;  // Attacker doesn't move during attack animation
+    kPacketAtk.lSY = (long)kPlayerPos.y;  // Use same position for source
+    kPacketAtk.fSyncDestX = kPlayerPos.x; // Local coords for anti-cheat validation
+    kPacketAtk.fSyncDestY = kPlayerPos.y; // Already positive
+    kPacketAtk.dwBlendDuration = 0;       // Attacker doesn't blend, only victim does
     kPacketAtk.dwComboMotion = pkInstMain->GetComboIndex();
     kPacketAtk.dwTime = ELTimer_GetServerMSec();
 
